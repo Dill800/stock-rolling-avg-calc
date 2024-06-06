@@ -1,12 +1,15 @@
 import json
 import http.client
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
+import pandas as pd
 
 totalShares = 0
 monthlyAdd = 0
 principal = 10000
-startDate = str(int(datetime(2004, 5, 6).timestamp()))
-endDate = str(int(datetime(2024, 5, 5).timestamp()))
+year_range = 12
+startDate = str(int((datetime(2009, 6, 1) - relativedelta(years=year_range)).timestamp()))
+endDate = str(int(datetime(2009, 6, 1).timestamp()))
 ticker = 'SPY'
 
 conn = http.client.HTTPSConnection("query1.finance.yahoo.com")
@@ -26,11 +29,14 @@ prices = response['chart']['result'][0]['indicators']['quote'][0]['close']
 prices = list(map(lambda x: round(x, 2) if x else None, prices))
 
 # Params
-month_window = 3
-threshold = 20
 
-for month_window in range(1, 13):
-    for threshold in range(1, 20):
+matrix = []
+
+for month_window in range(1, 100):
+
+    matrix.append([])
+
+    for threshold in range(1, 100):
 
         # List of prices that fit threshold criteria
         dip_weeks = []
@@ -73,59 +79,24 @@ for month_window in range(1, 13):
         total_shares = 0
         for price in dip_weeks:
             shares = week_add/price
-            totalShares += shares
+            total_shares += shares
 
         # Total result amount is amount of shares you have multiplied by current stock price
-        endAmt = round(totalShares * prices[len(prices)-1], 2)
+        endAmt = round(total_shares * prices[len(prices)-1], 2)
 
         # Calculate annualized return
-        annual_return = (endAmt/total_principal) ** (1/20)
+        annual_return = (endAmt/total_principal) ** (1/year_range)
 
-        print("Month Window: ", month_window, " | Threshold: ", threshold, "% | Return: ", round((annual_return-1) * 100, 2), "% | Occurences: ", len(dip_weeks), "% | Total: ", endAmt, "% | WeekAdd: ", week_add, "% | ShouldBeP: ", week_add*len(dip_weeks))
+        matrix[month_window-1].append(round((annual_return-1) * 100, 2))
+
+        # Occurences
+        #matrix[month_window-1].append(len(dip_weeks))
+
+        #print("Month Window: ", month_window, " | Threshold: ", threshold, "% | Return: ", round((annual_return-1) * 100, 2), "% | Occurences: ", len(dip_weeks))
 
 #print(len(dip_weeks))
-
-'''
-totalShares += principal/prices[0]
-
-for price in prices:
-    
-    #Rate is being subbed for current price
-    shares = monthlyAdd/price
-
-    totalShares += shares
-
-endAmt = totalShares * prices[len(prices)-1]
-totalContrib = principal + monthlyAdd*len(prices)
-print(ticker + " from " + str(datetime(2020, 4, 26)) + " to " + str(datetime(2024, 4, 26)))
-print("Principal: $" + str(principal))
-print("Monthly addition: $" + str(monthlyAdd))
-print()
-print("End amount: $" + str(round(endAmt, 2)))
-print("Total contributions: $" + str(totalContrib))
-print()
-print("Adjusted Total Return: " + str(    round(((endAmt/totalContrib)-1)*100, 2)     ) + "%")
-print("Adjusted Annualized Return: " + str(    round(100*((endAmt/totalContrib)**(12/len(prices)) - 1), 2)     ) + "%")
-'''
-'''
-for i in range(timeLength):
-    
-    #Rate is being subbed for current price
-    price = (1 + rate/100) ** i
-    shares = monthlyAdd/price
-
-    totalShares += shares
-
-print(totalShares * (1+rate/100)**(timeLength-1))
-'''
-'''
-conn = http.client.HTTPSConnection("query1.finance.yahoo.com")
-payload = ''
-headers = {}
-conn.request("GET", "/v8/finance/chart/VOO?events=capitalGain%257Cdiv%257Csplit&formatted=true&includeAdjustedClose=true&interval=1mo&period1=767332800&period2=1714104000&symbol=VOO&userYfid=true&lang=en-US&region=US", payload, headers)
-res = conn.getresponse()
-data = res.read()
-#response = json.loads(data.decode("utf-8"))
-#print(response['chart']['result'][0]['indicators']['quote'][0]['close'])
-'''
+        
+df = pd.DataFrame(matrix)
+print(df)
+df.to_csv(str(ticker) + '_' + str(year_range) + 'yr' + '_flatmarket.csv')
 
