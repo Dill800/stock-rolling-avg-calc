@@ -1,5 +1,6 @@
 import json
 import http.client
+import requests
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import pandas as pd
@@ -8,22 +9,23 @@ totalShares = 0
 monthlyAdd = 0
 principal = 10000
 year_range = 12
-startDate = str(int((datetime(2009, 6, 1) - relativedelta(years=year_range)).timestamp()))
-endDate = str(int(datetime(2009, 6, 1).timestamp()))
+beginDate = datetime(2009, 6, 1)
+startDate = str(int((beginDate - relativedelta(years=year_range)).timestamp()))
+endDate = str(int(beginDate.timestamp()))
+
 ticker = 'SPY'
 
-conn = http.client.HTTPSConnection("query1.finance.yahoo.com")
 payload = ''
-headers = {}
+headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'}
 
 # Weekly request
 request_url = "/v8/finance/chart/"+ticker+"?events=capitalGain%257Cdiv%257Csplit&formatted=true&includeAdjustedClose=true&interval=1wk&period1="+startDate+"&period2="+endDate+"&symbol=VOO&userYfid=true&lang=en-US&region=US"
 
-conn.request("GET", request_url, payload, headers)
+total_url = 'https://query1.finance.yahoo.com'+request_url
 
-res = conn.getresponse()
-data = res.read()
-response = json.loads(data.decode("utf-8"))
+res = requests.get(total_url, headers=headers).content
+
+response = json.loads(res.decode("utf-8"))
 prices = response['chart']['result'][0]['indicators']['quote'][0]['close']
 
 prices = list(map(lambda x: round(x, 2) if x else None, prices))
@@ -98,5 +100,5 @@ for month_window in range(1, 100):
         
 df = pd.DataFrame(matrix)
 print(df)
-df.to_csv(str(ticker) + '_' + str(year_range) + 'yr' + '_flatmarket.csv')
+#df.to_csv(str(ticker) + '_' + str(year_range) + 'yr' + '_flatmarket.csv')
 
